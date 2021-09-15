@@ -1,0 +1,71 @@
+version: "3.9"
+
+services:
+
+    redis:
+        container_name: sentry-redis
+        image: redis
+        env_file:
+            - .env
+        networks:
+            - sentry-net
+
+    postgres:
+        container_name: sentry-postgres
+        image: postgres
+        env_file:
+            - .env
+        volumes:
+            - pgdb:/var/lib/postgresql/data
+        networks:
+            - sentry-net
+    
+    sentry:
+        container_name: sentry-web
+        image: sentry
+        env_file:
+            - .env
+        links:
+            - redis
+            - postgres
+        ports:
+            - 9000:9000
+        stdin_open: true
+        tty: true
+        networks:
+            - sentry-net
+
+    cron:
+        container_name: sentry-cron
+        image: sentry
+        env_file:
+            - .env
+        depends_on:
+            - sentry
+        links:
+            - redis
+            - postgres
+        command: "sentry run cron"
+        networks:
+            - sentry-net
+
+    worker:
+        container_name: sentry-worker
+        image: sentry
+        env_file:
+            - .env
+        depends_on:
+            - sentry
+        links:
+            - redis
+            - postgres
+        command: "sentry run worker"
+        networks:
+            - sentry-net
+
+volumes:
+    pgdb:
+
+networks:
+    sentry-net:
+        name: sentry-net
